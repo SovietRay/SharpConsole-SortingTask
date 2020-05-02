@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -11,51 +12,26 @@ namespace SortingTask
     {
         static void Main(string[] args)
         {
-            string writePath = Directory.GetCurrentDirectory() + "\\TestData.txt";
-            Console.WriteLine(writePath);
-            List<Data> allData = new List<Data>();
-            //Console.ReadLine();
-            //string writePath = @"C:\Users\Лалитта\Documents\GitHub";
+            string fileName1 = "Data";
+
             try
             {
-                Random random = new Random();
-                using (StreamWriter sw = new StreamWriter(writePath, false, System.Text.Encoding.Default))
-                {
-                    for (int i = 0; i < 500; i++)
-                    {
-                        
-                        sw.WriteLine(random.Next(1, 100001) + ". " + LoremNET.Lorem.Words(1));
-                    }
-                }
+                int amountLines = 100000000;
+                int amountFiles = 5;
+                var timer = DateTime.Now;
+                Console.WriteLine(timer + " - время начала");
+                Console.WriteLine();
 
-                using (StreamReader sr = new StreamReader(writePath, System.Text.Encoding.Default))
-                {
-                    string line;
-                    while ((line = sr.ReadLine()) != null)
-                    {
-                        char ch = '.';
-                        int indexOfChar = line.IndexOf(ch);
-                        int number;
-                        int.TryParse(line.Substring(0, indexOfChar), out number);
-                        string text = line.Substring(indexOfChar+2);
+                WorkWithDataFile.CreateFileWithData(fileName1, amountLines, 0, 500, 10);
+                Console.WriteLine(Math.Round((DateTime.Now - timer).TotalSeconds, 2) + " сек." + " - время создания файла");
+                
+                timer = DateTime.Now;
+                WorkWithDataFile.MergeManyFiles(fileName1, amountFiles);
+                Console.WriteLine(Math.Round((DateTime.Now - timer).TotalSeconds, 2) + " сек." + " - время на разбивку и сортировку разбивки");
 
-                        allData.Add(new Data() { _id = number, _text = text});
-                    }
-                }
-
-                List<Data> SortedList = allData.OrderBy(order => order._text).ThenBy(order => order._id).ToList();
-
-                foreach (var item in allData)
-                {
-                    Console.WriteLine(item._id + " ! " + item._text);
-                }
-
-                Console.WriteLine("---------");
-                foreach (var item in SortedList)
-                {
-                    Console.WriteLine(item._id + " ! " + item._text);
-                }
-
+                timer = DateTime.Now;
+                Console.WriteLine();
+                Console.WriteLine(timer + " - время окончания");
                 Console.ReadLine();
             }
             catch (Exception e)
@@ -66,10 +42,7 @@ namespace SortingTask
             }
         }
     }
-
-    class Data
-    {
-        public int _id { get; set; }
-        public string _text { get; set; }
-    }
 }
+
+
+
