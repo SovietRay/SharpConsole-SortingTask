@@ -13,51 +13,62 @@ namespace SortingTask
     class WorkWithDataFile
     {
         static string writePath = Directory.GetCurrentDirectory();
-        public static void CreateFileWithData(string fileName, int numberOfLines, int minId, int maxId, int numberOfWordsInLine)
+        public static void CreateFileWithData(string fileName, int numberOfLines, int minId, int maxId)
         {
             try
             {
-                //string writePath = Directory.GetCurrentDirectory();
+                string path = writePath + @"\" + fileName + ".txt";
+                string content;
+                string content_additional;
+                byte[] bytes;
+
+                var timer = DateTime.Now;
+                FileInfo fileInf = new FileInfo(path);
                 Random random = new Random();
 
                 List<string> dictionary_names = new List<string>();
                 List<string> dictionary_surnames = new List<string>();
                 List<string> dictionary_cities = new List<string>();
 
+                Console.WriteLine($"Начало создания файла.");
+
                 CreateCollectionFromFile("Dictionary_names", ref dictionary_names);
                 CreateCollectionFromFile("Dictionary_surnames", ref dictionary_surnames);
                 CreateCollectionFromFile("Dictionary_cities", ref dictionary_cities);
 
-                //using (StreamWriter sw = new StreamWriter(writePath + @"\" + fileName + ".txt", false, Encoding.Default))
                 using (var sw = new FileStream(
-                    writePath + @"\" + fileName + ".txt", FileMode.Create, FileAccess.Write, FileShare.Write, 4096*4))
+                    writePath + @"\" + fileName + ".txt", 
+                    FileMode.Create, FileAccess.Write, FileShare.Write, 4096*4))
                 {
-                    string content;
-                    string content_additional;
-                    byte[] bytes;
+
                     for (int i = 0; i < numberOfLines; i++)
                     {
-                        content_additional = $"{dictionary_names[random.Next(0, dictionary_names.Count)]} {dictionary_surnames[random.Next(0, dictionary_surnames.Count)]} from {dictionary_cities[random.Next(0, dictionary_cities.Count)]}";
+                        content_additional = $"{dictionary_names[random.Next(0, dictionary_names.Count)]} " +
+                            $"{dictionary_surnames[random.Next(0, dictionary_surnames.Count)]} " +
+                            $"from {dictionary_cities[random.Next(0, dictionary_cities.Count)]}";
                         content = random.Next(minId, maxId) + ". " + content_additional;
                         bytes = Encoding.Default.GetBytes(content + "\r\n");
                         sw.Write(bytes, 0, bytes.Length);
                     }
                 }
+
+                Console.WriteLine($"Окончание создания файла. " +
+                    $"Время на создание ({fileName} ~ {Math.Round(fileInf.Length / 1048576.0, 3)}МБ.): " +
+                    $"{Math.Round((DateTime.Now - timer).TotalSeconds, 2)} сек.");
             }
             catch (Exception e)
             {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Ошибка при создании файла.");
                 Console.WriteLine(e);
-                Console.ReadLine();
+                Console.ResetColor();
                 throw;
             }
         }
-
         public static void CreateDataCollectionFromFile(string fileName, ref List<Data> data)
         {
             try
             {
-                //string writePath = Directory.GetCurrentDirectory();
-
                 data.Clear();
                 using (StreamReader sr = new StreamReader(writePath + @"\" + fileName + ".txt", Encoding.Default))
                 {
@@ -75,11 +86,13 @@ namespace SortingTask
             }
             catch (Exception e)
             {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Ошибка при создании коллекции типа - Data.");
                 Console.WriteLine(e);
+                Console.ResetColor();
                 throw;
             }
         }
-
         public static void CreateCollectionFromFile(string fileName, ref List<string> data)
         {
             try
@@ -96,98 +109,146 @@ namespace SortingTask
             }
             catch (Exception e)
             {
+                Console.WriteLine("Ошибка при создании коллекции.");
                 Console.WriteLine(e);
+                Console.ReadLine();
                 throw;
             }
         }
-
-        public static void SimpleSort(ref List<Data> data)
+        public static void SimpleDataSort(ref List<Data> data)
         {
             data = data.OrderBy(order => order._text).ThenBy(order => order._id).ToList();
         }
-
         public static void SaveDataToFile(string fileName, ref List<Data> data)
         {
+            string writePath = Directory.GetCurrentDirectory();
+            string content;
+            byte[] bytes;
+
             try
             {
-                string writePath = Directory.GetCurrentDirectory();
-                using (StreamWriter sw = new StreamWriter(writePath + @"\" + fileName + ".txt", false, Encoding.Default))
+                using (var sw = new FileStream(
+                    writePath + @"\" + fileName + ".txt",
+                    FileMode.Create, FileAccess.Write, FileShare.Write, 4096 * 4))
                 {
                     foreach (var item in data)
                     {
-                        sw.WriteLine(item._id + ". " + item._text);
+                        content = item._id + ". " + item._text;
+                        bytes = Encoding.Default.GetBytes(content + "\r\n");
+                        sw.Write(bytes, 0, bytes.Length);
                     }
                 }
             }
             catch (Exception e)
             {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Ошибка при сохранении Data в файл.");
                 Console.WriteLine(e);
+                Console.ResetColor();
+                throw;
+            }
+        }
+        public static void SortFile(string fileName)
+        {
+            try
+            {
+                Console.WriteLine($"Начал сортировку {fileName}");
+                var timer = DateTime.Now;
+                string path = writePath + @"\" + fileName + ".txt";
+
+                List<Data> data = new List<Data>();
+                FileInfo fileInf = new FileInfo(path);
+
+                CreateDataCollectionFromFile(fileName, ref data);
+                SimpleDataSort(ref data);
+                SaveDataToFile(fileName, ref data);
+
+                if (fileInf.Exists)
+                {
+                    Console.WriteLine($"Размер {fileName}: {Math.Round(fileInf.Length / 1048576.0, 3)}МБ. Время на сортировку: {Math.Round((DateTime.Now - timer).TotalSeconds, 2)} сек.");
+                }
+            }
+            catch (Exception e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Ошибка при сортировке файла.");
+                Console.WriteLine(e);
+                Console.ResetColor();
                 throw;
             }
         }
 
-        public static void SortFile(string fileName)
+        public static async Task SortAllSplitFilesAsync(string fileName, int maxFiles)
         {
             var timer = DateTime.Now;
-            List<Data> data = new List<Data>();
-            CreateDataCollectionFromFile(fileName, ref data);
-            SimpleSort(ref data);
-            SaveDataToFile(fileName, ref data);
 
-            string path = writePath + @"\" + fileName + ".txt";
-            FileInfo fileInf = new FileInfo(path);
-            if (fileInf.Exists)
+            Console.WriteLine();
+            Console.WriteLine("Начало сортировки файлов.");
+
+            List<Task> tasks = new List<Task>();
+
+            for (int i = 1; i < maxFiles; i++)
             {
-                Console.Write($"Размер {fileName}: {Math.Round(fileInf.Length / 1048576.0, 3)}МБ. ");
-                Console.WriteLine(Math.Round((DateTime.Now - timer).TotalSeconds, 2) + " сек." + " - время на сортировку");
+                //await tasks.Add(Task.Run(() => SortFile(fileName + "_" + i)));
+                SortFile(fileName + "_" + i);
             }
+
+            //Task.WaitAll(tasks.ToArray());
+
+            Console.WriteLine($"Окончание сортировки всех файлов: " +
+                $"{Math.Round((DateTime.Now - timer).TotalSeconds, 2)} сек.");
+            Console.WriteLine();
         }
-
-        public static void PrintDataFromFile(string fileName)
-        {
-
-        }
-
         public static void SimpleMerge(ref Data data1, ref Data data2)
         {
 
         }
-
         public static void FileSplit(string name, int maxFiles)
         {
+            byte[] bytes;
+            string line;
+            int m = 1;
 
-            string path = writePath + @"\" + name + ".txt";
-            FileInfo fileInf = new FileInfo(path);
-            if (fileInf.Exists)
+            var timer = DateTime.Now;
+
+            try
             {
-                Console.WriteLine( $"Размер основного файла: {Math.Round(fileInf.Length/1048576.0, 3)}МБ");
-            }
+                Console.WriteLine();
+                Console.WriteLine($"Начало разбивки файла ({name}) на {maxFiles} частей.");
 
-            using (StreamReader sr = new StreamReader(writePath + @"\" + name + ".txt", Encoding.Default))
+                using (StreamReader sr = new StreamReader(writePath + @"\" + name + ".txt", Encoding.Default))
+                {
+                    Dictionary<int, FileStream> streamWriters = new Dictionary<int, FileStream>(maxFiles);
+                    for (int i = 1; i <= maxFiles; i++)
+                    {
+                        var sw = new FileStream(writePath + @"\" + name + "_" + i + ".txt", FileMode.Create, FileAccess.Write, FileShare.Write, 4096 * 4);
+                        streamWriters.Add(i, sw);
+                    }
+
+                    while ((line = sr.ReadLine()) != null)
+                    {
+                        var sw = streamWriters[m];
+                        bytes = Encoding.Default.GetBytes(line + "\r\n");
+                        sw.Write(bytes, 0, bytes.Length);
+                        m = (m < maxFiles) ? m + 1 : 1;
+                    }
+
+                    for (int i = 1; i <= maxFiles; i++)
+                    {
+                        streamWriters[i].Dispose();
+                    }
+                }
+
+                Console.WriteLine($"Окончание разбивки: {Math.Round((DateTime.Now - timer).TotalSeconds, 2)} сек.");
+                Console.WriteLine("");
+            }
+            catch (Exception e)
             {
-                Dictionary<int, StreamWriter> streamWriters = new Dictionary<int, StreamWriter>(maxFiles);
-                for (int i = 1; i <= maxFiles; i++)
-                {
-                    StreamWriter sw = new StreamWriter(writePath + @"\" + name + "_" + i + ".txt", false, Encoding.Default);
-                    streamWriters.Add(i, sw);
-                }
-
-                string line;
-                int m = 1;
-                
-                while ((line = sr.ReadLine()) != null)
-                {
-                   var sw = streamWriters[m];
-                    sw.WriteLine(line);
-                    m = (m < maxFiles) ? m+1 : 1;
-                }
-
-                for (int i = 1; i <= maxFiles; i++)
-                {
-                    streamWriters[i].Dispose();
-                }
+                Console.WriteLine("Ошибка при разбивке файла.");
+                Console.WriteLine(e);
+                Console.ReadLine();
+                throw;
             }
-
         }
         public static void CreateSortedListFromFiles(string fileName, int maxFiles, ref List<Data> data)
         {
@@ -207,103 +268,84 @@ namespace SortingTask
                     }   
                 }
             }
-
             data = data.OrderBy(order => order._text).ThenBy(order => order._id).ToList();
-
-
         }
-        public static void MergeManyFiles (string name, int maxFiles)
+        public static void MergeManyFiles (string fileName, int amountFiles)
         {
-            List<Data> data = new List<Data>();
+            string writePath = Directory.GetCurrentDirectory();
+            string line;
 
             var timer = DateTime.Now;
-            Console.WriteLine();
-            Console.WriteLine("Начало разбивки");
-            //Ocenit razmer faila i polichit fail max
-            FileSplit(name, maxFiles);//Razdelit fail na malenkie
-            Console.WriteLine(Math.Round((DateTime.Now - timer).TotalSeconds, 2) + " сек." + " - время на разбивку");
-            Console.WriteLine("Окончание разбивки");
+            List<Data> data = new List<Data>();
 
-
-            timer = DateTime.Now;
-            Console.WriteLine();
-            Console.WriteLine("Начало сортировки");
-            for (int i = 1; i <= maxFiles; i++) //Otsortirovat kashdi fail
+            try
             {
-                SortFile(name + "_" + i);
-            }
-            Console.WriteLine(Math.Round((DateTime.Now - timer).TotalSeconds, 2) + " сек." + " - время на сортировку всех файлов разбивки");
-            Console.WriteLine("Окончание сортировки");
-            Console.WriteLine();
+                Console.WriteLine("Начало сборки файла.");
 
-            Console.WriteLine("Начало сборки файла");
-            timer = DateTime.Now;
-            //Otkrivaem vse faili na chtenie
-            string writePath = Directory.GetCurrentDirectory();
-            Dictionary<string , StreamReader> streamReaders = new Dictionary<string, StreamReader>(maxFiles);
-            for (int i = 1; i <= maxFiles; i++)
-            {
-                string srFileName = name + "_" + i;
-                StreamReader sr = new StreamReader(writePath + @"\" + srFileName + ".txt", Encoding.Default);
-                streamReaders.Add(srFileName, sr);
-            }
-
-            //Delaem list iz pervih strok vseh failov
-            string line;
-            foreach (var item in streamReaders)
-            {
-                if ((line = item.Value.ReadLine())!=null)
+                Dictionary<string, StreamReader> streamReaders = new Dictionary<string, StreamReader>(amountFiles);
+                for (int i = 1; i <= amountFiles; i++)
                 {
-                    char ch = '.';
-                    int indexOfChar = line.IndexOf(ch);
-                    int number;
-                    int.TryParse(line.Substring(0, indexOfChar), out number);
-                    string text = line.Substring(indexOfChar + 2);
-                    data.Add(new Data() { _id = number, _text = text, _fileName = item.Key});
+                    string srFileName = fileName + "_" + i;
+                    StreamReader sr = new StreamReader(writePath + @"\" + srFileName + ".txt", Encoding.Default);
+                    streamReaders.Add(srFileName, sr);
                 }
-            }
 
-            StreamWriter sw = new StreamWriter(writePath + @"\" + name + "_out.txt", false, Encoding.Default);
-
-            while (data.Count > 0)
-            {
-                //Otsortirovat list
-                data = data.OrderBy(order => order._text).ThenBy(order => order._id).ToList();
-
-                //Sohraniaem minimalnoe znachenie v buffer (fail)
-                //List<Data> buffer = new List<Data>();
-
-                sw.WriteLine(data[0]._id + ". " + data[0]._text);
-
-                //Zameniaem v liste to znachenie, chto popalo v buffer
-                if ((line = streamReaders[data[0]._fileName].ReadLine()) != null)
+                foreach (var item in streamReaders)
                 {
-                    char ch = '.';
-                    int indexOfChar = line.IndexOf(ch);
-                    int number;
-                    int.TryParse(line.Substring(0, indexOfChar), out number);
-                    string text = line.Substring(indexOfChar + 2);
-                    data[0]._id = number;
-                    data[0]._text = text;
+                    if ((line = item.Value.ReadLine()) != null)
+                    {
+                        char ch = '.';
+                        int indexOfChar = line.IndexOf(ch);
+                        int number;
+                        int.TryParse(line.Substring(0, indexOfChar), out number);
+                        string text = line.Substring(indexOfChar + 2);
+                        data.Add(new Data() { _id = number, _text = text, _fileName = item.Key });
+                    }
                 }
-                else
-                    data.RemoveAt(0);
-            }
 
-            foreach (var item in streamReaders)
+                StreamWriter sw = new StreamWriter(writePath + @"\" + fileName + "_out.txt", false, Encoding.Default);
+
+                while (data.Count > 0)
+                {
+                    data.OrderBy(order => order._text).ThenBy(order => order._id);
+                    sw.WriteLine(data[0]._id + ". " + data[0]._text);
+                    if ((line = streamReaders[data[0]._fileName].ReadLine()) != null)
+                    {
+                        char ch = '.';
+                        int indexOfChar = line.IndexOf(ch);
+                        int number;
+                        int.TryParse(line.Substring(0, indexOfChar), out number);
+                        string text = line.Substring(indexOfChar + 2);
+                        data[0]._id = number;
+                        data[0]._text = text;
+                    }
+                    else
+                        data.RemoveAt(0);
+                }
+
+                foreach (var item in streamReaders)
+                {
+                    item.Value.Dispose();
+                }
+                sw.Dispose();
+
+                Console.WriteLine($"Окончание сборки файла: { Math.Round((DateTime.Now - timer).TotalSeconds, 2)} сек.");
+                Console.WriteLine();
+            }
+            catch (Exception e)
             {
-                item.Value.Dispose();
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Ошибка при сборке файла.");
+                Console.WriteLine(e);
+                Console.ResetColor();
+                throw;
             }
-            sw.Dispose();
-
-            //Poiskat v pervih strokah failov i liste stroki s takim she znacheniem
-            //Sdelat novi spisok takih strok i otsortirovat po nomeru
-            //Udalit iz list
-            //Dobavit v itogovi fail
-            //Povtoriat poka est stroki v failah
-            Console.WriteLine(Math.Round((DateTime.Now - timer).TotalSeconds, 2) + " сек." + " - время на сборку файла");
-            Console.WriteLine("Окончание сборки файла");
-            Console.WriteLine();
+        }
+        public static async Task DataSortAsync(string fileName, int amountFiles)
+        {
+            FileSplit(fileName, amountFiles);
+            await SortAllSplitFilesAsync(fileName, amountFiles);
+            MergeManyFiles(fileName, amountFiles);
         }
     }
 
