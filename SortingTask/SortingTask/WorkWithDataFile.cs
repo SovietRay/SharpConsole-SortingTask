@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -167,6 +168,10 @@ namespace SortingTask
                 {
                     Console.WriteLine($"Размер {fileName}: {Math.Round(fileInf.Length / 1048576.0, 3)}МБ. Время на сортировку: {Math.Round((DateTime.Now - timer).TotalSeconds, 2)} сек.");
                 }
+
+
+
+                //return true;
             }
             catch (Exception e)
             {
@@ -186,15 +191,18 @@ namespace SortingTask
             Console.WriteLine("Начало сортировки файлов.");
 
             List<Task> tasks = new List<Task>();
+            int b = 1;
 
-            for (int i = 1; i < maxFiles; i++)
+            for (int i = 1; i <= maxFiles; i++)
             {
-                //await tasks.Add(Task.Run(() => SortFile(fileName + "_" + i)));
-                SortFile(fileName + "_" + i);
+                string file = $"{fileName}_{i}";
+                Console.WriteLine(file);          
+                Task sortTask = Task.Run(() => SortFile(file));
+                tasks.Add(sortTask);
             }
 
-            //Task.WaitAll(tasks.ToArray());
-
+            await Task.WhenAll(tasks.ToArray());
+            Console.ReadLine();
             Console.WriteLine($"Окончание сортировки всех файлов: " +
                 $"{Math.Round((DateTime.Now - timer).TotalSeconds, 2)} сек.");
             Console.WriteLine();
