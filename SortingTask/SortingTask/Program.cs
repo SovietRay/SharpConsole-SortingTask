@@ -15,7 +15,7 @@ namespace SortingTask
         static async Task Main(string[] args)
         {
             string fileName = "Data";
-            int fileSizeMB = 100;
+            int fileSizeMB = 10;
             int maxLenghtFileSizeInput = 6;
             int maxLenghtFileNameInput = 10;
             int minIndexForDataFile = 0;

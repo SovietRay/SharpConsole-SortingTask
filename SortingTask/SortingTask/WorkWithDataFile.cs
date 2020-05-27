@@ -274,11 +274,23 @@ namespace SortingTask
                 }
 
                 StreamWriter streamWriter = new StreamWriter(writePath + @"\" + fileName + "_out.txt", false, Encoding.Default);
+                StringBuilder content = new StringBuilder();
+                long bufferContent = (long)50 * 1024 * 1024;
 
                 while (dataForSorting.Count > 0)
                 {
+
                     dataForSorting.Sort(new SplitComparer().Compare);
-                    streamWriter.WriteLine(dataForSorting.First().Value);
+                    if (content.Length <= bufferContent)
+                    {
+                        content.AppendLine(dataForSorting.First().Value);
+                    }
+                    else
+                    {
+                        content.AppendLine(dataForSorting.First().Value);
+                        streamWriter.Write(content);
+                        content.Clear();
+                    }
 
                     if ((line = streamReaders[dataForSorting.First().Key].ReadLine()) != null)
                     {
@@ -287,6 +299,9 @@ namespace SortingTask
                     else
                         dataForSorting.RemoveAt(0);                 
                 }
+
+                streamWriter.Write(content);
+                content.Clear();
 
                 foreach (var item in streamReaders)
                 {
