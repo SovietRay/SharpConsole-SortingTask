@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -16,13 +17,13 @@ namespace SortingTask
     {
         static string writePath = Directory.GetCurrentDirectory();
         static Random random = new Random();
+        static int fileStreamBuffSize = 4096 * 4;
 
         public static void CreateFileWithData(string fileName, int sizeInMB, int minId, int maxId)
         {
             try
             {
                 string pathToFile = writePath + @"\" + fileName + ".txt";
-                int fileStreamBuffSize = 4096 * 4;
                 long sizeByte = (long)sizeInMB * 1024 * 1024;
 
                 Stopwatch timerSW = Stopwatch.StartNew();
@@ -73,6 +74,30 @@ namespace SortingTask
             }
         }
 
+        public static void CreateCollectionFromFile(string fileName, ref List<string> data)
+        {
+            try
+            {
+                data.Clear();
+                using (StreamReader sr = new StreamReader(writePath + @"\" + fileName + ".txt", Encoding.Default))
+                {
+                    string line;
+                    while ((line = sr.ReadLine()) != null)
+                    {
+                        data.Add(line);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Error creating collection.");
+                Console.WriteLine(e);
+                Console.ResetColor();
+                throw;
+            }
+        }
+
         private static string GenerateContent(
             ref List<string> dictionaryNames,
             ref List<string> dictionarySurnames,
@@ -99,14 +124,14 @@ namespace SortingTask
         {
             int amountFiles = FileSplit(fileName, splitFileSize);
             await SortAllSplitFilesAsync(fileName, amountFiles);
-            //MergeManyFiles(fileName, amountFiles);
+            MergeManyFiles(fileName, amountFiles);
+            DeleteAllSplittedFiles(fileName, amountFiles);
         }
 
         public static int FileSplit(string fileName, int splitFileSize)
         {
 
             string pathToFile = writePath + @"\" + fileName + ".txt";
-            int fileStreamBuffSize = 4096 * 4;
             long bufferContent = (long)splitFileSize * 1024 * 1024;
             int firstFileNumber = 1;
 
@@ -157,7 +182,7 @@ namespace SortingTask
                 Console.WriteLine($"Done!");
                 Console.WriteLine($"Time passed: {CheckSWTimer(timerSW)}");
                 Console.WriteLine();
-                Console.ReadLine();
+
                 return (firstFileNumber - 1);
             }
             catch (Exception e)
@@ -171,24 +196,22 @@ namespace SortingTask
 
         public static async Task SortAllSplitFilesAsync(string fileName, int amountFiles)
         {
-            var timer = DateTime.Now;
             List<Task> tasks = new List<Task>();
+            Stopwatch timerSW = Stopwatch.StartNew();
 
-            Console.WriteLine("Начало сортировки файлов.");
-
+            Console.WriteLine("Start sorting split files:");
             for (int i = 1; i <= amountFiles; i++)
             {
-                string file = $"{fileName}_{i}";
-                Console.WriteLine(file);
-                //Task sortTask = Task.Run(() => SortFile(file));
-                SortFile(file);
-                //tasks.Add(sortTask);
+                string splittedFileName = $"{fileName}_{i}";
+                Console.WriteLine($"I whant try to sort - {splittedFileName}.");
+                Task sortTask = Task.Run(() => SortFile(splittedFileName));
+                //SortFile(splittedFileName);
+                tasks.Add(sortTask);
             }
-
-            //await Task.WhenAll(tasks.ToArray());
-            Console.ReadLine();
-            Console.WriteLine($"Окончание сортировки всех файлов: " +
-                $"{Math.Round((DateTime.Now - timer).TotalSeconds, 2)} сек.");
+            Console.WriteLine("...");
+            await Task.WhenAll(tasks.ToArray());
+            Console.WriteLine($"All files sorted!");
+            Console.WriteLine($"Time passed: {CheckSWTimer(timerSW)}");
             Console.WriteLine();
         }
 
@@ -196,211 +219,101 @@ namespace SortingTask
         {
             try
             {
-                Console.WriteLine($"Начал сортировку {fileName}");
-                var timer = DateTime.Now;
                 string path = writePath + @"\" + fileName + ".txt";
 
-                List<Data> data = new List<Data>();
+                Stopwatch timerSW = Stopwatch.StartNew();
                 FileInfo fileInf = new FileInfo(path);
+                var content = File.ReadAllLines(path);
 
-                CreateDataCollectionFromFile(fileName, ref data);
-                SimpleDataSort(ref data);
-                SaveDataToFile(fileName, ref data);
-
-                if (fileInf.Exists)
+                Array.Sort(content, new SplitComparer());
+                using (var sw = new FileStream(path, FileMode.Truncate, FileAccess.Write, FileShare.Write, fileStreamBuffSize))
                 {
-                    Console.WriteLine($"Размер {fileName}: {Math.Round(fileInf.Length / 1048576.0, 3)}МБ. Время на сортировку: {Math.Round((DateTime.Now - timer).TotalSeconds, 2)} сек.");
-                }
-
-            }
-            catch (Exception e)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Ошибка при сортировке файла.");
-                Console.WriteLine(e);
-                Console.ResetColor();
-                throw;
-            }
-        }
-
-        public static void CreateDataCollectionFromFile(string fileName, ref List<Data> data)
-        {
-            try
-            {
-                data.Clear();
-                using (StreamReader sr = new StreamReader(writePath + @"\" + fileName + ".txt", Encoding.Default))
-                {
-                    string line;
-                    while ((line = sr.ReadLine()) != null)
+                    foreach (var item in content)
                     {
-                        char ch = '.';
-                        int indexOfChar = line.IndexOf(ch);
-                        int number;
-                        int.TryParse(line.Substring(0, indexOfChar), out number);
-                        string text = line.Substring(indexOfChar + 2);
-                        data.Add(new Data() { _id = number, _text = text });
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Ошибка при создании коллекции типа - Data.");
-                Console.WriteLine(e);
-                Console.ResetColor();
-                throw;
-            }
-        }
-        public static void CreateCollectionFromFile(string fileName, ref List<string> data)
-        {
-            try
-            {
-                data.Clear();
-                using (StreamReader sr = new StreamReader(writePath + @"\" + fileName + ".txt", Encoding.Default))
-                {
-                    string line;
-                    while ((line = sr.ReadLine()) != null)
-                    {
-                        data.Add(line);
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Ошибка при создании коллекции.");
-                Console.WriteLine(e);
-                Console.ReadLine();
-                throw;
-            }
-        }
-
-        public static void SimpleDataSort(ref List<Data> data)
-        {
-            data.OrderBy(order => order._text).ThenBy(order => order._id);
-        }
-
-        public static void SaveDataToFile(string fileName, ref List<Data> data)
-        {
-            string writePath = Directory.GetCurrentDirectory();
-            string content;
-            byte[] bytes;
-
-            try
-            {
-                using (var sw = new FileStream(
-                    writePath + @"\" + fileName + ".txt",
-                    FileMode.Create, FileAccess.Write, FileShare.Write, 4096 * 4))
-                {
-                    foreach (var item in data)
-                    {
-                        content = item._id + ". " + item._text; //Добавить окончание с переходам в стринг, где дата, сохранить сразу все в байты и записывать куском в файл. Линкк создает копию... сохранить все в масси и сразу отсортировать
-                        bytes = Encoding.Default.GetBytes(content + "\r\n");
+                        byte[] bytes = Encoding.Default.GetBytes(item + "\r\n");
                         sw.Write(bytes, 0, bytes.Length);
                     }
                 }
+
+                Console.WriteLine($"Done! Size of {fileName}: {Math.Round(fileInf.Length / 1024f / 1024f, 3)}MB.");
+                Console.WriteLine($"Time passed: {CheckSWTimer(timerSW)}");
             }
             catch (Exception e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Ошибка при сохранении Data в файл.");
+                Console.WriteLine("An error occurred while sorting the splited file!");
                 Console.WriteLine(e);
                 Console.ResetColor();
                 throw;
             }
         }
 
-        //public static void createsortedlistfromfiles(string filename, int maxfiles, ref list<data> data)
-        //{
-        //    for (int i = 1; i <= maxfiles; i++)
-        //    {
-        //        using (streamreader sr = new streamreader(writepath + @"\" + filename + "_" + i + ".txt", encoding.default))
-        //        {
-        //            string line;
-        //            if ((line = sr.readline()) != null)
-        //            {
-        //                char ch = '.';
-        //                int indexofchar = line.indexof(ch);
-        //                int number;
-        //                int.tryparse(line.substring(0, indexofchar), out number);
-        //                string text = line.substring(indexofchar + 2);
-        //                data.add(new data() { _id = number, _text = text, _filename = filename + "_" + i});
-        //            }   
-        //        }
-        //    }
-        //    data = data.orderby(order => order._text).thenby(order => order._id).tolist();
-        //}
-        //public static void MergeManyFiles (string fileName, int amountFiles)
-        //{
-        //    string writePath = Directory.GetCurrentDirectory();
-        //    string line;
+        public static void MergeManyFiles(string fileName, int amountFiles)
+        {
+            string line;
+            List<KeyValuePair<string, string>> dataForSorting = new List<KeyValuePair<string, string>>();
+            Dictionary<string, StreamReader> streamReaders = new Dictionary<string, StreamReader>(amountFiles);
+            Stopwatch timerSW = Stopwatch.StartNew();
 
-        //    var timer = DateTime.Now;
-        //    List<Data> data = new List<Data>();
+            try
+            {
+                Console.WriteLine("Start building the file from several.");
+                Console.WriteLine("...");
 
-        //    try
-        //    {
-        //        Console.WriteLine("Начало сборки файла.");
+                for (int i = 1; i <= amountFiles; i++)
+                {
+                    string sortedFileName = fileName + "_" + i;
+                    StreamReader sr = new StreamReader(writePath + @"\" + sortedFileName + ".txt", Encoding.Default);
+                    streamReaders.Add(sortedFileName, sr);
+                }
 
-        //        Dictionary<string, StreamReader> streamReaders = new Dictionary<string, StreamReader>(amountFiles);
-        //        for (int i = 1; i <= amountFiles; i++)
-        //        {
-        //            string srFileName = fileName + "_" + i;
-        //            StreamReader sr = new StreamReader(writePath + @"\" + srFileName + ".txt", Encoding.Default);
-        //            streamReaders.Add(srFileName, sr);
-        //        }
+                foreach (var item in streamReaders)
+                {
+                    if ((line = item.Value.ReadLine()) != null)
+                        dataForSorting.Add(new KeyValuePair<string, string>(item.Key, line));
+                }
 
-        //        foreach (var item in streamReaders)
-        //        {
-        //            if ((line = item.Value.ReadLine()) != null)
-        //            {
-        //                char ch = '.';
-        //                int indexOfChar = line.IndexOf(ch);
-        //                int number;
-        //                int.TryParse(line.Substring(0, indexOfChar), out number);
-        //                string text = line.Substring(indexOfChar + 2);
-        //                data.Add(new Data() { _id = number, _text = text, _fileName = item.Key });
-        //            }
-        //        }
+                StreamWriter streamWriter = new StreamWriter(writePath + @"\" + fileName + "_out.txt", false, Encoding.Default);
 
-        //        StreamWriter sw = new StreamWriter(writePath + @"\" + fileName + "_out.txt", false, Encoding.Default);
+                while (dataForSorting.Count > 0)
+                {
+                    dataForSorting.Sort(new SplitComparer().Compare);
+                    streamWriter.WriteLine(dataForSorting.First().Value);
 
-        //        while (data.Count > 0)
-        //        {
-        //            data.OrderBy(order => order._text).ThenBy(order => order._id);
-        //            sw.WriteLine(data[0]._id + ". " + data[0]._text);
-        //            if ((line = streamReaders[data[0]._fileName].ReadLine()) != null)
-        //            {
-        //                char ch = '.';
-        //                int indexOfChar = line.IndexOf(ch);
-        //                int number;
-        //                int.TryParse(line.Substring(0, indexOfChar), out number);
-        //                string text = line.Substring(indexOfChar + 2);
-        //                data[0]._id = number;
-        //                data[0]._text = text;
-        //            }
-        //            else
-        //                data.RemoveAt(0);
-        //        }
+                    if ((line = streamReaders[dataForSorting.First().Key].ReadLine()) != null)
+                    {
+                        dataForSorting[0] = new KeyValuePair<string, string>(dataForSorting.First().Key, line);
+                    }
+                    else
+                        dataForSorting.RemoveAt(0);                 
+                }
 
-        //        foreach (var item in streamReaders)
-        //        {
-        //            item.Value.Dispose();
-        //        }
-        //        sw.Dispose();
+                foreach (var item in streamReaders)
+                {
+                    item.Value.Dispose();
+                }
+                streamWriter.Dispose();
 
-        //        Console.WriteLine($"Окончание сборки файла: { Math.Round((DateTime.Now - timer).TotalSeconds, 2)} сек.");
-        //        Console.WriteLine();
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        Console.ForegroundColor = ConsoleColor.Red;
-        //        Console.WriteLine("Ошибка при сборке файла.");
-        //        Console.WriteLine(e);
-        //        Console.ResetColor();
-        //        throw;
-        //    }
-        //}
+                Console.WriteLine($"Done!");
+                Console.WriteLine($"Time passed: {CheckSWTimer(timerSW)}");
+            }
+            catch (Exception e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("An error occurred while merge the slited file!");
+                Console.WriteLine(e);
+                Console.ResetColor();
+                throw;
+            }
+        }
 
+        private static void DeleteAllSplittedFiles(string fileName, int amount)
+        {
+            for (int i = 1; i <= amount; i++)
+            {
+                File.Delete(writePath + @"\" + fileName + "_" + i + ".txt");
+            }
+        }
 
 
         private static string CheckSWTimer(Stopwatch timerSW)
@@ -409,12 +322,82 @@ namespace SortingTask
             return string.Format("{0:00}:{1:00}:{2:00}.{3:00}",
                 ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
         }
+
+/*        private static void treeSort(string[] str)
+        {
+            foreach (var item in str)
+            {
+
+            }
+        }*/
     }
 
-    class Data
+/*    class Data
     {
         public int _id { get; set; }
         public string _text { get; set; }
-        //public string _fileName { get; set; }
+    }*/
+
+    public class SplitComparer : IComparer
+    {
+        public int Compare(object left, object right)
+        {
+            try
+            {
+                ParseCompareString(left, out int leftNumber, out string leftData);
+                ParseCompareString(right, out int rightNumber, out string rightData);
+
+                if (!leftData.Equals(rightData))       
+                    return leftData.CompareTo(rightData);
+                else
+                {
+                    if (leftNumber < rightNumber)
+                        return -1;
+
+                    if (leftNumber > rightNumber)
+                        return 1;
+                   
+                    return 0;
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        public int Compare(KeyValuePair<string, string> left, KeyValuePair<string, string> right)
+        {
+            try
+            {
+                ParseCompareString(left.Value, out int leftNumber, out string leftData);
+                ParseCompareString(right.Value, out int rightNumber, out string rightData);
+
+                if (!leftData.Equals(rightData))
+                    return leftData.CompareTo(rightData);
+                else
+                {
+                    if (leftNumber < rightNumber)
+                        return -1;
+
+                    if (leftNumber > rightNumber)
+                        return 1;
+
+                    return 0;
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        private static void ParseCompareString(object obj, out int num, out string str)
+        {
+            char ch = '.';
+            int indexofchar = obj.ToString().IndexOf(ch);
+            str = obj.ToString().Substring(indexofchar + 1);
+            num = int.Parse(obj.ToString().Substring(0, indexofchar));
+        }
     }
 }

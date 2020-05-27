@@ -21,6 +21,10 @@ namespace SortingTask
             int minIndexForDataFile = 0;
             int maxIndexForDataFile = 500;
             int splitFileSizeMB = 100;
+            int LogicCores = Environment.ProcessorCount;
+
+            Stopwatch timerCreateFile = new Stopwatch();
+            Stopwatch timerSortFile = new Stopwatch();
 
             Console.OutputEncoding = Encoding.GetEncoding(1251);
             Console.InputEncoding = Encoding.GetEncoding(1251);
@@ -46,36 +50,38 @@ namespace SortingTask
                 Console.Clear();
                 #endregion
 
-                var timerSW = Stopwatch.StartNew();
-               
-                var timer = DateTime.Now;
-                Console.WriteLine(timer + " - program start time.");
-                Console.WriteLine();
-                
+                Console.WriteLine("The number of processors " + "on this computer is {0}.", LogicCores);
+                Console.WriteLine("Is this 64-bit OS - {0}.", Environment.Is64BitOperatingSystem);
+                //ReadForContinue();
+
+                timerCreateFile.Start();
                 WorkWithDataFile.CreateFileWithData(fileName, fileSizeMB, minIndexForDataFile, maxIndexForDataFile);
+                timerCreateFile.Stop();
+                
+                timerSortFile.Start();
                 await WorkWithDataFile.DataSortAsync(fileName, splitFileSizeMB);
+                timerSortFile.Stop();
 
                 Console.WriteLine();
-                //Console.WriteLine($"{DateTime.Now} - время окончания выполнения. Итого прошло без учета времени на ввод данных - {Math.Round((DateTime.Now - timer).TotalSeconds - readLineSec, 2)} сек.");
-                CheckSWTimer(timerSW);
-                Console.ReadLine();
+                Console.WriteLine($"Time to create: {CheckSWTimer(timerCreateFile)}");
+                Console.WriteLine($"Time to sort: {CheckSWTimer(timerSortFile)}");
+                ReadForContinue();
             }
             catch (Exception e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Ошибка в Main.");
+                Console.WriteLine("An error occurred in main code!");
                 Console.WriteLine(e);
                 Console.ResetColor();
                 throw;
             }
         }
 
-        private static void CheckSWTimer(Stopwatch timerSW)
+        private static string CheckSWTimer(Stopwatch timerSW)
         {
             TimeSpan ts = timerSW.Elapsed;
-            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+            return string.Format("{0:00}:{1:00}:{2:00}.{3:00}",
                 ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
-            Console.WriteLine("RunTime " + elapsedTime);
         }
 
         private static int ReadOnlyNumber(int maxLength)
@@ -138,6 +144,20 @@ namespace SortingTask
                 } 
             } while (true);
             return input.ToString();
+        }
+
+        private static void ReadForContinue()
+        {
+            Console.Write("Please, type (y) for continue: ");
+            do
+            {
+                ConsoleKeyInfo keyInfo = Console.ReadKey(true);
+                if (keyInfo.Key == ConsoleKey.Y)
+                {
+                    Console.WriteLine();
+                    break;
+                }
+            } while (true);
         }
     }
 }
