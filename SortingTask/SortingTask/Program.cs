@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
+﻿using Microsoft.Win32;
+using System;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -14,65 +10,66 @@ namespace SortingTask
     {
         static async Task Main(string[] args)
         {
-            string fileName = "Data";
-            int fileSizeMB = 10;
             int maxLenghtFileSizeInput = 6;
             int maxLenghtFileNameInput = 10;
             int minIndexForDataFile = 0;
             int maxIndexForDataFile = 500;
             int splitFileSizeMB = 100;
-            int LogicCores = Environment.ProcessorCount;
+            int logicCores = Environment.ProcessorCount;
 
             Stopwatch timerCreateFile = new Stopwatch();
             Stopwatch timerSortFile = new Stopwatch();
+            Stopwatch timerSortFileByTwo = new Stopwatch();
 
             Console.OutputEncoding = Encoding.GetEncoding(1251);
             Console.InputEncoding = Encoding.GetEncoding(1251);
 
             try
             {
-                //кодировка
-                //пробелы между методами
-                //ввод данных, проверка размера файла до достижения определенного размера
-                //разбивка на несколько файлов исходя из размера
-                //проверка доступной памяти и количество процессоров для их загрузки, убрать имя файла из сортировки
-                //своя сортировка, отказ от линкю, через массив и свой сомпаунд?
-                //запуск программы как 64
-                //работа со строками через стрингер stringbuilder c#
-                //заменить таймер
-                //
 
-                #region Ввод данных
+                #region Enter file name and size
                 Console.Write("Enter the file name: ");
-                fileName = ReadOnlyLetterAndNumber(maxLenghtFileNameInput);
+                string fileName = ReadOnlyLetterAndNumber(maxLenghtFileNameInput);
                 Console.Write("Enter the file size in megabytes: ");
-                fileSizeMB = ReadOnlyNumber(maxLenghtFileSizeInput);
+                int fileSizeMB = ReadOnlyNumber(maxLenghtFileSizeInput);
                 Console.Clear();
                 #endregion
 
-                Console.WriteLine("The number of processors " + "on this computer is {0}.", LogicCores);
+                #region Message
+                Console.WriteLine("The number of processors " + "on this computer is {0}.", logicCores);
                 Console.WriteLine("Is this 64-bit OS - {0}.", Environment.Is64BitOperatingSystem);
-                //ReadForContinue();
+                #endregion
 
                 timerCreateFile.Start();
-                WorkWithDataFile.CreateFileWithData(fileName, fileSizeMB, minIndexForDataFile, maxIndexForDataFile);
+                WorkWithDataFile.CreateFileWithRandomData(fileName, fileSizeMB, minIndexForDataFile, maxIndexForDataFile);
                 timerCreateFile.Stop();
-                
+
+
                 timerSortFile.Start();
-                await WorkWithDataFile.DataSortAsync(fileName, splitFileSizeMB);
+                await WorkWithDataFile.DataSortManyToOneAsync(fileName, splitFileSizeMB);
                 timerSortFile.Stop();
 
+                timerSortFileByTwo.Start();
+                await WorkWithDataFile.DataSortTwoToOneAsync(fileName, splitFileSizeMB);
+                timerSortFileByTwo.Stop();
+
+                #region Message
                 Console.WriteLine();
-                Console.WriteLine($"Time to create: {CheckSWTimer(timerCreateFile)}");
-                Console.WriteLine($"Time to sort: {CheckSWTimer(timerSortFile)}");
+                Console.WriteLine($"Time to create the random file: {CheckSWTimer(timerCreateFile)}");
+                Console.WriteLine($"Time to sort by merge all to one: {CheckSWTimer(timerSortFile)}");
+                Console.WriteLine($"Time to sort by two to one: {CheckSWTimer(timerSortFileByTwo)}");
+                #endregion
+
                 ReadForContinue();
             }
             catch (Exception e)
             {
+                #region Exception
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("An error occurred in main code!");
                 Console.WriteLine(e);
                 Console.ResetColor();
+                #endregion
                 throw;
             }
         }
@@ -98,8 +95,7 @@ namespace SortingTask
                 if (char.IsNumber(keyInfo.KeyChar) && (input.Length <= maxLength - 1))
                 {
                     input.Append(keyInfo.KeyChar);
-                    Console.Write(keyInfo.KeyChar);
-                    
+                    Console.Write(keyInfo.KeyChar);     
                 }
                 if (keyInfo.Key == ConsoleKey.Enter)
                 {
@@ -130,7 +126,6 @@ namespace SortingTask
                 {
                     input.Append(keyInfo.KeyChar);
                     Console.Write(keyInfo.KeyChar);
-
                 }
                 if (keyInfo.Key == ConsoleKey.Enter)
                 {
