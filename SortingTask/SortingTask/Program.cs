@@ -1,6 +1,8 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.Diagnostics;
+using System.IO;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -14,8 +16,12 @@ namespace SortingTask
             int maxLenghtFileNameInput = 10;
             int minIndexForDataFile = 0;
             int maxIndexForDataFile = 500;
-            int splitFileSizeMB = 100;
+            int splitFileSizeMB = 50;
             int logicCores = Environment.ProcessorCount;
+            string remoteUriDictionaryAddress = "https://github.com/SovietRay/SharpConsole-SortingTask/blob/develop/SortingTask/SortingTask/Dictionary_address.txt";
+            string remoteUriDictionaryNames = "https://github.com/SovietRay/SharpConsole-SortingTask/blob/develop/SortingTask/SortingTask/Dictionary_names.txt";
+            string remoteUriDictionarySurnames = "https://github.com/SovietRay/SharpConsole-SortingTask/blob/develop/SortingTask/SortingTask/Dictionary_surnames.txt";
+
 
             Stopwatch timerCreateFile = new Stopwatch();
             Stopwatch timerSortFile = new Stopwatch();
@@ -26,6 +32,25 @@ namespace SortingTask
 
             try
             {
+                          
+                if (System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
+                {
+                    using (WebClient client = new WebClient())
+                    {
+                        client.DownloadFileAsync(new Uri(remoteUriDictionaryAddress), "Dictionary_address.txt");
+                    }
+                    using (WebClient client = new WebClient())
+                    {
+                        client.DownloadFileAsync(new Uri(remoteUriDictionaryNames), "Dictionary_names.txt");
+                    }
+                    using (WebClient client = new WebClient())
+                    {
+                        client.DownloadFileAsync(new Uri(remoteUriDictionarySurnames), "Dictionary_surnames.txt");
+                    }
+                    Console.WriteLine("Download all Dictionary files");
+                    await Task.WhenAll();
+                    Console.Clear();
+                }
 
                 #region Enter file name and size
                 Console.Write("Enter the file name: ");
