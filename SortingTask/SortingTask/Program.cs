@@ -18,9 +18,9 @@ namespace SortingTask
             int maxIndexForDataFile = 500;
             int splitFileSizeMB = 50;
             int logicCores = Environment.ProcessorCount;
-            string remoteUriDictionaryAddress = "https://github.com/SovietRay/SharpConsole-SortingTask/blob/develop/SortingTask/SortingTask/Dictionary_address.txt";
-            string remoteUriDictionaryNames = "https://github.com/SovietRay/SharpConsole-SortingTask/blob/develop/SortingTask/SortingTask/Dictionary_names.txt";
-            string remoteUriDictionarySurnames = "https://github.com/SovietRay/SharpConsole-SortingTask/blob/develop/SortingTask/SortingTask/Dictionary_surnames.txt";
+            string remoteUriDictionaryAddress = "https://raw.githubusercontent.com/SovietRay/SharpConsole-SortingTask/develop/SortingTask/SortingTask/Dictionary_address.txt";
+            string remoteUriDictionaryNames = "https://raw.githubusercontent.com/SovietRay/SharpConsole-SortingTask/develop/SortingTask/SortingTask/Dictionary_names.txt";
+            string remoteUriDictionarySurnames = "https://raw.githubusercontent.com/SovietRay/SharpConsole-SortingTask/develop/SortingTask/SortingTask/Dictionary_surnames.txt";
 
 
             Stopwatch timerCreateFile = new Stopwatch();
@@ -31,8 +31,7 @@ namespace SortingTask
             Console.InputEncoding = Encoding.GetEncoding(1251);
 
             try
-            {
-                          
+            {              
                 if (System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
                 {
                     using (WebClient client = new WebClient())
@@ -47,7 +46,7 @@ namespace SortingTask
                     {
                         client.DownloadFileAsync(new Uri(remoteUriDictionarySurnames), "Dictionary_surnames.txt");
                     }
-                    Console.WriteLine("Download all Dictionary files");
+                    Console.WriteLine("Download all Dictionary files...");
                     await Task.WhenAll();
                     Console.Clear();
                 }
